@@ -15,7 +15,7 @@ const refreshCookieOptions = {
       ? process.env.NODE_ENV === "production"
       : process.env.COOKIE_SECURE === "true",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  path: "/api/auth/refresh",
+  path: "/",
 };
 
 const setRefreshCookie = (res: Response, refreshToken: string) => {
@@ -57,28 +57,42 @@ export const check = asyncHandler(async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
-    ApiResponse.sendError(res, 401, "No access token provided");
+    ApiResponse.sendError(res, 401, "No access token provided", "UNAUTHORIZED");
     return;
   }
 
-  const token = authHeader.split(" ")[1];
+  const token = authHeader.substring(7);
 
   if (!token) {
-    ApiResponse.sendError(res, 401, "No access token provided");
+    ApiResponse.sendError(res, 401, "No access token provided", "UNAUTHORIZED");
     return;
   }
 
   try {
     const decoded = verifyAccessToken(token);
 
+    const user = await service.getUserById(decoded.id);
+
+    if (!user) {
+      ApiResponse.sendError(res, 401, "User not found", "UNAUTHORIZED");
+      return;
+    }
+
     ApiResponse.sendSuccess(res, 200, "Access token is valid", {
       valid: true,
       user: {
-        id: decoded.id,
+        id: user.id,
+        name: user.name,
+        email: user.email,
       },
     });
   } catch {
-    ApiResponse.sendError(res, 401, "Invalid or expired access token");
+    ApiResponse.sendError(
+      res,
+      401,
+      "Invalid or expired access token",
+      "UNAUTHORIZED",
+    );
   }
 });
 
