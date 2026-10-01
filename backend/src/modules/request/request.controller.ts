@@ -9,37 +9,29 @@ import { RequestRepository } from "./request.repository.js";
 
 import { RequestDashboardRepository } from "./request.dashboard.repository.js";
 import { RequestDashboardService } from "./request.dashboard.service.js";
+import type { RequestQueryDTO } from "./request.validation.js";
 
 const service = new RequestService(new RequestRepository());
 const dashboardService = new RequestDashboardService(
   new RequestDashboardRepository(),
 );
 
-export const createRequest = asyncHandler(
-  async (req: Request, res: Response) => {
-    if (!req.user) {
-      throw ApiError.unauthorized("Authentication required");
-    }
+export const createRequest = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    throw ApiError.unauthorized("Authentication required");
+  }
 
-    const request = await service.create(req.body, req.user.id);
+  const request = await service.create(req.body, req.user.id);
 
-    return ApiResponse.sendSuccess(
-      res,
-      201,
-      "Request created successfully",
-      request,
-    );
-  },
-);
+  return ApiResponse.sendSuccess(res, 201,"Request created successfully", request);
+});
 
-export const getRequests = asyncHandler(async (req: Request, res: Response) => {
-  const query = {
-    page: Number(req.query.page),
-    limit: Number(req.query.limit),
-    status: typeof req.query.status === "string" ? req.query.status : undefined,
-  };
+export const getRequests = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    throw ApiError.unauthorized("Authentication required");
+  }
 
-  const result = await service.getAll(query as any);
+  const result = await service.getAll(req.query as any, req.user.id);
 
   return ApiResponse.sendSuccess(
     res,
@@ -49,44 +41,49 @@ export const getRequests = asyncHandler(async (req: Request, res: Response) => {
   );
 });
 
-export const getRequestById = asyncHandler(
-  async (req: Request, res: Response) => {
-    const request = await service.getById(Number(req.params.id));
+export const getRequestById = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    throw ApiError.unauthorized("Authentication required");
+  }
 
-    return ApiResponse.sendSuccess(
-      res,
-      200,
-      "Request retrieved successfully",
-      request,
-    );
-  },
-);
+  const request = await service.getById(Number(req.params.id), req.user.id);
 
-export const updateRequestStatus = asyncHandler(
-  async (req: Request, res: Response) => {
-    const request = await service.updateStatus(Number(req.params.id), req.body);
+  return ApiResponse.sendSuccess(
+    res,
+    200,
+    "Request retrieved successfully",
+    request,
+  );
+});
 
-    return ApiResponse.sendSuccess(
-      res,
-      200,
-      "Request status updated successfully",
-      request,
-    );
-  },
-);
+export const updateRequestStatus = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    throw ApiError.unauthorized("Authentication required");
+  }
 
-export const deleteRequest = asyncHandler(
-  async (req: Request, res: Response) => {
-    const request = await service.delete(Number(req.params.id));
+  const request = await service.updateStatus(
+    Number(req.params.id),
+    req.user.id,
+    req.body,
+  );
 
-    return ApiResponse.sendSuccess(
-      res,
-      200,
-      "Request deleted successfully",
-      request,
-    );
-  },
-);
+  return ApiResponse.sendSuccess(
+    res,
+    200,
+    "Request status updated successfully",
+    request,
+  );
+});
+
+export const deleteRequest = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    throw ApiError.unauthorized("Authentication required");
+  }
+
+  await service.delete(Number(req.params.id), req.user.id);
+
+  return res.status(204).send();
+});
 
 export const getDashboardStats = asyncHandler(
   async (req: Request, res: Response) => {
