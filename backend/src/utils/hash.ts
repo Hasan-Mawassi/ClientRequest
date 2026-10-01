@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { config } from "../config/config";
+import { config } from "../config/config.js";
 
 const SALT = config.jwt.BCRYPT_ROUNDS;
 

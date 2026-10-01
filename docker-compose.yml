@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: client-dashboard-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: client_dashboard
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d client_dashboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: client-dashboard-api
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+
+      DATABASE_URL: ${DATABASE_URL}
+
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+
+      JWT_ACCESS_EXPIRES: ${JWT_ACCESS_EXPIRES:-15m}
+      JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES:-7d}
+
+      FRONTEND_URL: ${FRONTEND_URL}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./my-react-app
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_URL: http://localhost:4000/v1/api
+
+    container_name: client-dashboard-web
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
